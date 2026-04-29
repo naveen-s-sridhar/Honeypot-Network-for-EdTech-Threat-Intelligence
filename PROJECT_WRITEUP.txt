@@ -1,0 +1,251 @@
+# PROJECT WRITE-UP
+# Design and Development of Honeypot Network for EdTech Threat Intelligence
+# BCA Project | Python & Socket Programming
+
+================================================================================
+                              ABSTRACT
+================================================================================
+
+The rapid growth of online education has made EdTech platforms attractive targets
+for cyberattacks. This project presents the design and development of a lightweight,
+Python-based honeypot network intended to collect and analyze threat intelligence
+specifically relevant to educational technology environments.
+
+A honeypot is a decoy system designed to attract and monitor unauthorized access
+attempts. Our implementation creates a TCP socket server that mimics a real EdTech
+portal, listens on a designated port, records incoming connection attempts with
+their source IP addresses and timestamps, and returns a deceptive "Access Denied"
+response to simulate authentic server behavior.
+
+The system incorporates multi-threaded connection handling for realistic scalability,
+automated suspicious IP detection based on connection frequency thresholds, and
+dual-format log storage using CSV for structured records and JSON for enriched
+metadata. Results demonstrate that the honeypot successfully captured simulated
+attack patterns, identified repeated connection attempts, and produced actionable
+threat intelligence reports—all using only Python's standard library.
+
+Keywords: Honeypot, Threat Intelligence, EdTech Security, Socket Programming,
+          Intrusion Detection, Python, Cybersecurity
+
+================================================================================
+                           1. INTRODUCTION
+================================================================================
+
+1.1 Background
+--------------
+The education sector has witnessed a dramatic shift toward digital platforms,
+accelerated by global events that pushed learning online. EdTech platforms today
+store sensitive data including student personal information, assessment records,
+payment details, and institutional credentials. This makes them high-value targets
+for malicious actors.
+
+According to cybersecurity researchers, educational institutions have become
+one of the most frequently attacked sectors, facing threats including credential
+brute-forcing, automated scanning, data theft, and denial-of-service attacks.
+Traditional security systems like firewalls and intrusion detection systems (IDS)
+are largely reactive — they block known threats but struggle with unknown attack
+patterns.
+
+1.2 Problem Statement
+---------------------
+Most small-to-medium EdTech organizations lack the resources to deploy enterprise-
+grade threat intelligence systems. There is a need for a simple, low-cost, and
+effective method to observe attacker behavior in a safe, controlled environment
+without exposing real systems to risk.
+
+1.3 Objective
+-------------
+This project aims to:
+  a) Design a honeypot server that mimics an EdTech web portal
+  b) Capture and log all incoming unauthorized connection attempts
+  c) Detect patterns of suspicious behavior (repeated connections)
+  d) Generate structured threat intelligence data for analysis
+  e) Demonstrate all concepts using Python and standard socket programming
+
+1.4 Scope
+---------
+This project is implemented as a proof-of-concept for educational and research
+purposes. It operates on a local network and simulates a TCP-based EdTech server.
+It is not intended for deployment in production environments without additional
+security hardening.
+
+================================================================================
+                           2. LITERATURE REVIEW
+================================================================================
+
+2.1 Honeypot Technology
+-----------------------
+The concept of honeypots was formalized in the 1990s and has since evolved into
+a mature cybersecurity tool. Honeypots are classified as:
+  - Low-interaction: Simulate limited services (our approach)
+  - High-interaction: Run full operating systems to deeply engage attackers
+  - Research honeypots: Gather threat intelligence
+  - Production honeypots: Deployed in real environments to detect live attacks
+
+2.2 Threat Intelligence in Education
+--------------------------------------
+The education sector faces unique threats:
+  - Credential stuffing attacks on student login portals
+  - Automated bots scanning for vulnerable endpoints
+  - Ransomware targeting administrative systems
+  - Data exfiltration targeting student PII (Personally Identifiable Information)
+
+2.3 Python for Network Security
+--------------------------------
+Python's socket library provides direct access to TCP/UDP networking, making it
+ideal for building custom network security tools. Its threading module enables
+concurrent connection handling without the overhead of external frameworks.
+
+================================================================================
+                           3. METHODOLOGY
+================================================================================
+
+3.1 System Architecture
+------------------------
+The honeypot system is composed of four primary modules:
+
+  [config.py]   — Centralized configuration management
+                  Stores all parameters (port, thresholds, file paths) in one place
+                  for easy modification without touching core logic.
+
+  [honeypot.py] — Core server module
+                  Uses Python's socket library to create a TCP server.
+                  Implements threading to handle multiple simultaneous connections.
+                  Coordinates between the logger and detector modules.
+
+  [logger.py]   — Data persistence module
+                  Writes connection events to CSV format for structured analysis.
+                  Records suspicious IP metadata to JSON for rich data storage.
+                  Generates human-readable summary reports on demand.
+
+  [detector.py] — Behavioral analysis module
+                  Maintains an in-memory record of connection timestamps per IP.
+                  Uses a sliding time window algorithm to detect rapid repeated
+                  connections from the same source, flagging them as suspicious.
+
+3.2 Technical Implementation
+-----------------------------
+
+3.2.1 Socket Server Setup
+The server creates a TCP socket using socket.AF_INET (IPv4) and socket.SOCK_STREAM
+(TCP protocol). It binds to port 8888 on all interfaces (0.0.0.0) and listens for
+incoming connections using a backlog queue of 50 connections.
+
+3.2.2 Multi-threaded Connection Handling
+Each accepted connection spawns a new daemon thread using Python's threading.Thread
+class. This allows the server to handle multiple simultaneous connections without
+blocking. A threading.Lock object ensures thread-safe access to shared data
+structures in the detector module.
+
+3.2.3 Data Logging
+Every connection is recorded with the following fields:
+  - Timestamp (YYYY-MM-DD HH:MM:SS format)
+  - Source IP address
+  - Source port number
+  - Payload data received (first 200 characters)
+  - Suspicious flag (True/False)
+
+3.2.4 Suspicious IP Detection Algorithm
+The detector implements a sliding window approach:
+  1. Record the Unix timestamp of each connection per IP
+  2. On each new connection, purge timestamps older than TIME_WINDOW_SECONDS
+  3. Count remaining timestamps in the window
+  4. If count >= SUSPICIOUS_THRESHOLD, flag the IP and log enriched data to JSON
+
+This approach is memory-efficient and handles IP resets naturally — an IP that
+stops attacking will eventually "reset" as its old timestamps expire.
+
+3.2.5 Deceptive Response
+The honeypot sends a crafted HTTP 403 response that mimics a real EdTech server:
+  - Includes a realistic "Server:" header (EduPortal-v2.1)
+  - Returns an HTML body with an "Access Denied" message
+  - Mentions that the "incident is logged" — psychological deterrent
+
+3.3 Testing Methodology
+------------------------
+The system was tested using a custom test_honeypot.py script that simulates:
+  Test 1 — Single normal connection
+  Test 2 — Repeated connections from same IP (triggers suspicious detection)
+  Test 3 — Concurrent connections from multiple simulated attackers
+  Test 4 — Varied attack payloads (SQL injection, admin brute-force, scanning)
+
+All tests were conducted on localhost (127.0.0.1) to avoid any ethical or legal
+issues associated with testing on real networks.
+
+================================================================================
+                           4. RESULTS
+================================================================================
+
+4.1 Connection Logging
+-----------------------
+The system successfully logged all incoming connections to connections.csv with
+accurate timestamps, IP addresses, port numbers, and payload data.
+
+4.2 Suspicious IP Detection
+-----------------------------
+IPs that exceeded 3 connections within a 60-second window were automatically
+flagged and their details saved to suspicious.json with full timestamp history.
+
+4.3 Multi-threading Performance
+---------------------------------
+The server handled 8 simultaneous test connections without dropping any, and
+without any race conditions in the shared data structures (verified by consistent
+log counts matching the number of test connections).
+
+4.4 Summary Report
+-------------------
+The generate_summary() function produced accurate statistics including total
+connections, unique IPs, and suspicious IP listings.
+
+================================================================================
+                           5. CONCLUSION
+================================================================================
+
+This project successfully demonstrates the design and implementation of a Python-
+based honeypot system tailored for the EdTech threat intelligence domain. Using
+only Python's standard library — socket, threading, csv, json — we built a fully
+functional deception-based security tool capable of:
+
+  ✅ Accepting and logging multiple simultaneous connections
+  ✅ Sending realistic deceptive responses to attackers
+  ✅ Detecting and flagging suspicious repeated connections
+  ✅ Storing structured intelligence data in CSV and JSON formats
+  ✅ Generating actionable threat intelligence reports
+
+The system demonstrates that effective cybersecurity tools do not always require
+expensive enterprise software. Even a simple honeypot like this can provide
+valuable insight into the type, frequency, and source of attacks targeting an
+organization's network perimeter.
+
+5.1 Future Enhancements
+------------------------
+  1. Email Alerts    — Automatically notify administrators when a suspicious IP is detected
+  2. GeoIP Lookup    — Map attacker IPs to countries using a GeoIP database
+  3. Dashboard       — A web-based real-time visualization of attacks using Flask
+  4. Port Rotation   — Listen on multiple ports to detect more attack types
+  5. Machine Learning— Use ML to classify attack types from payload data
+  6. Docker          — Package the honeypot as a container for easy deployment
+  7. SIEM Integration— Export logs to Splunk or ELK Stack for professional analysis
+
+5.2 Ethical Considerations
+---------------------------
+This honeypot was developed and tested exclusively in a controlled, local
+environment. Deploying honeypots on public networks may have legal implications.
+All testing was performed on localhost only, using simulated connections. No
+real network traffic was captured or analyzed.
+
+================================================================================
+                           6. REFERENCES
+================================================================================
+
+[1] Spitzner, L. (2002). Honeypots: Tracking Hackers. Addison-Wesley.
+[2] Python Software Foundation. (2024). socket — Low-level networking interface.
+    https://docs.python.org/3/library/socket.html
+[3] Python Software Foundation. (2024). threading — Thread-based parallelism.
+    https://docs.python.org/3/library/threading.html
+[4] CISA. (2023). Cybersecurity Risks in the Education Sector.
+    https://www.cisa.gov/
+[5] Mokube, I., & Adams, M. (2007). Honeypots: concepts, approaches, and
+    challenges. Proceedings of the 45th ACM Southeast Conference.
+
+================================================================================
